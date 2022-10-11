@@ -27,6 +27,7 @@
 #include <dxgi1_6.h>
 #include <d2d1_3.h>
 #include <wincodec.h>
+#include <dwrite_3.h>
 
 // STL
 #include <vector>
