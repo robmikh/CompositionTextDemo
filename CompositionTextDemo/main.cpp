@@ -37,9 +37,25 @@ int __stdcall WinMain(HINSTANCE, HINSTANCE, PSTR, int)
     root.Brush(compositor.CreateColorBrush(winrt::Colors::White()));
     target.Root(root);
 
+    // Options
+    bool dxDebug = false;
+#ifdef _DEBUG
+    dxDebug = true;
+#endif
+
     // Init D3D and D2D
-    auto d3dDevice = util::CreateD3DDevice();
-    auto d2dFactory = util::CreateD2DFactory();
+    uint32_t flags = D3D11_CREATE_DEVICE_BGRA_SUPPORT;
+    if (dxDebug)
+    {
+        flags |= D3D11_CREATE_DEVICE_DEBUG;
+    }
+    auto d3dDevice = util::CreateD3DDevice(flags);
+    auto debugLevel = D2D1_DEBUG_LEVEL_NONE;
+    if (dxDebug)
+    {
+        debugLevel = D2D1_DEBUG_LEVEL_INFORMATION;
+    }
+    auto d2dFactory = util::CreateD2DFactory(debugLevel);
     auto d2dDevice = util::CreateD2DDevice(d2dFactory, d3dDevice);
     auto compGraphics = util::CreateCompositionGraphicsDevice(compositor, d2dDevice.get());
 
@@ -81,21 +97,27 @@ int __stdcall WinMain(HINSTANCE, HINSTANCE, PSTR, int)
     visual.RelativeOffsetAdjustment({ 0.5f, 0.5f, 0.0f });
     visual.Size({ static_cast<float>(textSize.Width), static_cast<float>(textSize.Height) });
     auto brush = compositor.CreateSurfaceBrush();
-    visual.Brush(brush);
     root.Children().InsertAtTop(visual);
-    auto surface = compGraphics.CreateDrawingSurface2(textSize, winrt::DirectXPixelFormat::B8G8R8A8UIntNormalized, winrt::DirectXAlphaMode::Premultiplied);
-    brush.Surface(surface);
+
+    // Setup our basic brush
+    auto surface = compGraphics.CreateDrawingSurface2(textSize, winrt::DirectXPixelFormat::A8UIntNormalized, winrt::DirectXAlphaMode::Premultiplied);
+    auto basicBrush = compositor.CreateSurfaceBrush(surface);
     {
         auto surfaceContext = util::SurfaceContext(surface);
         auto d2dContext = surfaceContext.GetDeviceContext();
-
+    
         winrt::com_ptr<ID2D1SolidColorBrush> d2dBrush;
         winrt::check_hresult(d2dContext->CreateSolidColorBrush({ 0.0f, 0.0f, 0.0f, 1.0f }, d2dBrush.put()));
         
         d2dContext->Clear({ 0.0f, 0.0f, 0.0f, 0.0f });
-        //d2dContext->Clear({ 1.0f, 0.713f, 0.757f, 1.0f });
         d2dContext->DrawTextLayout({ 0, 0 }, textLayout.get(), d2dBrush.get());
     }
+
+    // Create our mask brush
+    auto maskBrush = compositor.CreateMaskBrush();
+    maskBrush.Source(compositor.CreateColorBrush(winrt::Color{ 255, 0, 0, 0 }));
+    maskBrush.Mask(basicBrush);
+    visual.Brush(maskBrush);
 
     // Add a border for debugging
     auto border = compositor.CreateSpriteVisual();
@@ -107,7 +129,7 @@ int __stdcall WinMain(HINSTANCE, HINSTANCE, PSTR, int)
     border.Brush(borderBrush);
     borderBrush.SetInsets(borderSize);
     borderBrush.IsCenterHollow(true);
-    borderBrush.Source(compositor.CreateColorBrush(winrt::Colors::Red()));
+    borderBrush.Source(compositor.CreateColorBrush(winrt::Color{ 255, 255, 0, 0 }));
     visual.Children().InsertAtTop(border);
 
     // Message pump
