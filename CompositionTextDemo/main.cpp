@@ -91,7 +91,7 @@ int __stdcall WinMain(HINSTANCE, HINSTANCE, PSTR, int)
     };
     winrt::SizeInt32 textSize = { textRect.right - textRect.left, textRect.bottom - textRect.top };
 
-    // Create a visual and render our text
+    // Create a visual for our text
     auto visual = compositor.CreateSpriteVisual();
     visual.AnchorPoint({ 0.5f, 0.5f });
     visual.RelativeOffsetAdjustment({ 0.5f, 0.5f, 0.0f });
@@ -115,9 +115,21 @@ int __stdcall WinMain(HINSTANCE, HINSTANCE, PSTR, int)
 
     // Create our mask brush
     auto maskBrush = compositor.CreateMaskBrush();
-    maskBrush.Source(compositor.CreateColorBrush(winrt::Color{ 255, 0, 0, 0 }));
+    auto textColorBrush = compositor.CreateColorBrush(winrt::Color{ 255, 255, 0, 0 });
+    maskBrush.Source(textColorBrush);
     maskBrush.Mask(basicBrush);
     visual.Brush(maskBrush);
+
+    // Animate our text color
+    auto animation = compositor.CreateColorKeyFrameAnimation();
+    animation.InsertKeyFrame(0.0f, winrt::Color{ 255, 255, 0, 0 });
+    animation.InsertKeyFrame(0.5f, winrt::Color{ 255, 0, 0, 255 });
+    animation.InsertKeyFrame(0.25f, winrt::Color{ 255, 0, 255, 0 });
+    animation.InsertKeyFrame(0.75f, winrt::Color{ 255, 255, 255, 0 });
+    animation.InsertKeyFrame(1.0f, winrt::Color{ 255, 255, 0, 0 });
+    animation.Duration(std::chrono::seconds(3));
+    animation.IterationBehavior(winrt::AnimationIterationBehavior::Forever);
+    textColorBrush.StartAnimation(L"Color", animation);
 
     // Add a border for debugging
     auto border = compositor.CreateSpriteVisual();
